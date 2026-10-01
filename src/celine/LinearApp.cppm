@@ -5,16 +5,13 @@ module;
 #include <concepts>
 #include <cstddef>
 #include <format>
+#include <print>
 #include <utility>
 
 export module celine:LinearApp;
 
-// keep this here until we have real testing
-namespace TestNotBroken {
-export int the_funniest_number() {
-    return 67;
-}
-}  // namespace TestNotBroken
+// floating point approx
+constexpr double EPSILON = 1e-9;
 
 // mat[row][col] -> OutDim rows, InDim columns
 // f: R^4 -> R^3
@@ -52,7 +49,7 @@ public:
     constexpr LinearApp(Matrix<OutDim, InDim> const& other_mat) : mat { other_mat } {}
 
     // creates a placeholder by only setting
-    // the last value of the linear application
+    // the last value of the linear form
     static constexpr LinearApp placeholder() noexcept
         requires(InDim >= 1 && OutDim == 1)
     {
@@ -79,20 +76,67 @@ public:
 
     /// MEMBER FUNCTIONS ///
 
+    [[nodiscard]] constexpr size_t in_dim() const noexcept {
+        return InDim;
+    }
+
+    [[nodiscard]] constexpr size_t out_dim() const noexcept {
+        return OutDim;
+    }
+
     [[nodiscard]] constexpr bool projector() const noexcept
         requires(InDim == OutDim)
     {
         LinearApp sq {};
         // ikj loop to satify cache locality because mat is row-major
-        for (size_t i = 0; i < InDim; ++i) {
-            for (size_t k = 0; k < InDim; ++k) {
+        for (size_t i = 0; i < OutDim; ++i) {
+            for (size_t k = 0; k < OutDim; ++k) {
                 double scalar = mat[i][k];
-                for (size_t j = 0; j < InDim; ++j) {
+                for (size_t j = 0; j < OutDim; ++j) {
                     sq.mat[i][j] += scalar * mat[k][j];
                 }
             }
         }
         return sq == mat;
+    }
+
+    [[nodiscard]] constexpr size_t rank() const noexcept {
+        Matrix temp { mat };
+
+        for (size_t i1 = 0; i1 < OutDim; ++i1) {
+            std::println("{}", temp);
+            // Find the first non zero of the line
+            size_t first_non_zero = 0;
+            bool row_empty = true;
+            for (size_t j = 0; j < InDim; ++j) {
+                if (std::abs(temp[i1][j]) > EPSILON) {  // TODO epsilon
+                    row_empty = false;
+                    first_non_zero = j;
+                    break;
+                }
+            }
+            if (row_empty) {
+                std::println("Row empty return: {}", i1);
+                return i1;
+            }
+
+            for (size_t i2 = i1 + 1; i2 < OutDim; ++i2) {
+                for (size_t j = 0; j < InDim; ++j) {
+                    if (j == first_non_zero) {
+                        temp[i2][j] = 0.0;
+                    } else {
+                        std::println("first_non_zero : {}", first_non_zero);
+                        std::println("temp[i1][first_non_zero] : {}", temp[i1][first_non_zero]);
+                        std::println("i2:{}, j:{}, ... : {}", i2, j, temp[i2][j] * (temp[i2][first_non_zero] / temp[i1][first_non_zero]));
+                        temp[i2][j] -= temp[i2][j] * (temp[i2][first_non_zero] / temp[i1][first_non_zero]);
+                    }
+                }
+            }
+        }
+
+        std::println("Final branch : {}", OutDim);
+
+        return OutDim;
     }
 
     [[nodiscard]] constexpr bool surjective() const noexcept;
