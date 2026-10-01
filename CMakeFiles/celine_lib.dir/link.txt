@@ -1,0 +1,2 @@
+/usr/bin/llvm-ar qc build/linux/x86_64/release/libceline_lib.a CMakeFiles/celine_lib.dir/src/celine/celine.cppm.o CMakeFiles/celine_lib.dir/src/celine/LinearApp.cppm.o
+/usr/bin/llvm-ranlib build/linux/x86_64/release/libceline_lib.a

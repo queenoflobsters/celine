@@ -1,0 +1,1 @@
+/usr/lib64/ccache/clang++ -m64 -stdlib=libc++ -Xlinker --dependency-file=CMakeFiles/celine_bin.dir/link.d CMakeFiles/celine_bin.dir/src/main.cpp.o -o build/linux/x86_64/release/celine_bin   -L/home/gaybe/Documents/dev/cpp/celine/build/linux/x86_64/release  -Wl,-rpath,/home/gaybe/Documents/dev/cpp/celine/build/linux/x86_64/release build/linux/x86_64/release/libceline_lib.a
