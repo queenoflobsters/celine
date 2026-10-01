@@ -84,20 +84,35 @@ public:
         return OutDim;
     }
 
-    [[nodiscard]] constexpr bool projector() const noexcept
+    [[nodiscard]] constexpr bool projector(double eps = EPSILON) const noexcept
         requires(InDim == OutDim)
     {
         LinearApp sq {};
-        // ikj loop to satify cache locality because mat is row-major
+
+        // ikj loop for cache locality
         for (size_t i = 0; i < OutDim; ++i) {
             for (size_t k = 0; k < OutDim; ++k) {
-                double scalar = mat[i][k];
+                double const scalar = mat[i][k];
                 for (size_t j = 0; j < OutDim; ++j) {
                     sq.mat[i][j] += scalar * mat[k][j];
                 }
             }
         }
-        return sq == mat;
+
+        auto const abs = [](double v) noexcept { 
+            return v < 0.0 ? -v : v; 
+        };
+
+        // Check |P^2[i][j] - P[i][j]| <= eps for every coefficient
+        for (size_t i = 0; i < OutDim; ++i) {
+            for (size_t j = 0; j < OutDim; ++j) {
+                if (abs(sq.mat[i][j] - mat[i][j]) > eps) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     [[nodiscard]] constexpr size_t rank(double eps = EPSILON) const noexcept {
@@ -247,6 +262,8 @@ public:
         app *= (1. / coef);
         return app;
     }
+
+    friend constexpr bool operator==(LinearApp const& lhs, LinearApp const& rhs) noexcept = default;
 };
 
 export template <std::size_t FirstInDim, std::size_t SecondInDim, size_t RetInDim = std::max(FirstInDim, SecondInDim)>
