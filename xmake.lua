@@ -2,6 +2,7 @@ add_requires("doctest")
 add_rules("mode.debug", "mode.release")
 set_languages("c++23")
 set_policy("build.c++.modules.std", false)
+set_policy("build.c++.modules.clang.fallbackscanner", true)
 
 target("celine_lib")
     set_kind("$(kind)")

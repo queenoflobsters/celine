@@ -3,7 +3,7 @@ module;
 #include <algorithm>
 #include <array>
 #include <concepts>
-#include <cstddef>
+// #include <cstddef>
 #include <format>
 #include <print>
 #include <utility>
@@ -100,48 +100,74 @@ public:
         return sq == mat;
     }
 
-    [[nodiscard]] constexpr size_t rank() const noexcept {
-        Matrix temp { mat };
-
-        for (size_t i1 = 0; i1 < OutDim; ++i1) {
-            std::println("{}", temp);
-            // Find the first non zero of the line
-            size_t first_non_zero = 0;
-            bool row_empty = true;
-            for (size_t j = 0; j < InDim; ++j) {
-                if (std::abs(temp[i1][j]) > EPSILON) {  // TODO epsilon
-                    row_empty = false;
-                    first_non_zero = j;
-                    break;
-                }
-            }
-            if (row_empty) {
-                std::println("Row empty return: {}", i1);
-                return i1;
-            }
-
-            for (size_t i2 = i1 + 1; i2 < OutDim; ++i2) {
-                for (size_t j = 0; j < InDim; ++j) {
-                    if (j == first_non_zero) {
-                        temp[i2][j] = 0.0;
-                    } else {
-                        std::println("first_non_zero : {}", first_non_zero);
-                        std::println("temp[i1][first_non_zero] : {}", temp[i1][first_non_zero]);
-                        std::println("i2:{}, j:{}, ... : {}", i2, j, temp[i2][j] * (temp[i2][first_non_zero] / temp[i1][first_non_zero]));
-                        temp[i2][j] -= temp[i2][j] * (temp[i2][first_non_zero] / temp[i1][first_non_zero]);
-                    }
-                }
-            }
+    [[nodiscard]] constexpr size_t rank(double eps = EPSILON) const noexcept {
+        if constexpr (InDim == 0 || OutDim == 0) {
+            return 0;
         }
 
-        std::println("Final branch : {}", OutDim);
+        Matrix<OutDim, InDim> temp = mat;
+        size_t lead = 0;
 
-        return OutDim;
+        // constexpr abs helper
+        auto constexpr abs = [](double v) noexcept {
+            return v < 0.0 ? -v : v;
+        };
+
+        for (size_t col = 0; col < InDim && lead < OutDim; ++col) {
+            // 1. Partial pivoting: find the row with the largest absolute value in this column
+            size_t pivot_row = lead;
+            double max_val = abs(temp[pivot_row][col]);
+
+            for (size_t row = lead + 1; row < OutDim; ++row) {
+                double const val = abs(temp[row][col]);
+                if (val > max_val) {
+                    max_val = val;
+                    pivot_row = row;
+                }
+            }
+
+            // 2. If the column entries at and below 'lead' are negligible, skip this column
+            if (max_val <= eps) {
+                continue;
+            }
+
+            // 3. Swap the pivot row to the current lead position
+            if (pivot_row != lead) {
+                std::swap(temp[lead], temp[pivot_row]);
+            }
+
+            // 4. Eliminate entries below the pivot
+            double const pivot = temp[lead][col];
+            for (size_t row = lead + 1; row < OutDim; ++row) {
+                double const entry = temp[row][col];
+                if (abs(entry) <= eps) {
+                    continue; // Already zero; avoid useless work and noise accumulation
+                }
+
+                double const factor = entry / pivot;
+                for (size_t c = col + 1; c < InDim; ++c) {
+                    temp[row][c] -= factor * temp[lead][c];
+                }
+                temp[row][col] = 0.0;
+            }
+
+            ++lead;
+        }
+
+        return lead;
     }
 
-    [[nodiscard]] constexpr bool surjective() const noexcept;
-    [[nodiscard]] constexpr bool injective() const noexcept;
-    [[nodiscard]] constexpr bool bijective() const noexcept;
+    [[nodiscard]] constexpr bool surjective() const noexcept {
+        return rank() == OutDim;
+    }
+
+    [[nodiscard]] constexpr bool injective() const noexcept {
+        return rank() == InDim;
+    }
+
+    [[nodiscard]] constexpr bool bijective() const noexcept {
+        return (InDim == OutDim) && (rank() == InDim);
+    }
 
     /// OPERATORS ///
 
